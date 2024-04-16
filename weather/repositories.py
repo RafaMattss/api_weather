@@ -1,17 +1,26 @@
-from django.conf import settings
 import pymongo
+from pymongo.errors import ConnectionFailure
+from bson import ObjectId
+from django.conf import settings
+from .exceptions import WeatherException
 
 class WeatherRepository:
-    def __init__(self, collection_name) -> None:
-        self.collection = collection_name
+
+    collection = ''
+
+    def __init__(self, collectionName) -> None:
+        self.collection = collectionName
 
     def getConnection(self):
-        client = pymongo.MongoClient(
-            getattr(settings, "MONGO_CONNECTION_STRING")
-        )
+        try:
+            client = pymongo.MongoClient(
+                getattr(settings, "MONGO_CONNECTION_STRING")
+            )
+        except ConnectionFailure as e :
+            raise WeatherException(f"Error connecting to database: {e}")
+        
         connection = client[
-            getattr(settings, "MONGO_DATABASE_NAME")
-        ]
+            getattr(settings, "MONGO_DATABASE_NAME")]
         return connection
     
     def getCollection(self):
@@ -19,23 +28,38 @@ class WeatherRepository:
         collection = conn[self.collection]
         return collection
     
-    def getByAttribute(self, attribute, value):
-        document = self.getCollection().find_one({f"{attribute}": value})
-
-    def delete(self, document) -> None:
-        self.getCollection().delete_one(document)
-		
-    def deleteAll(self) -> None:
-        self.getCollection().delete_many({})
-
-    def findOneById(self, id):
-        document = self.getCollection().find_one({"_id": id})
-        return document
-    
     def getAll(self):
-        document = self.getCollection().find({})
+        documents = []
+        for document in self.getCollection().find({}):
+            id = document.pop('_id')
+            document['id'] = str(id)
+            documents.append(document)
+        return documents
+    
+    def get(self, filter):
+        documents = []
+        for document in self.getCollection().find(filter):
+            id = document.pop('_id')
+            document['id'] = str(id)
+            documents.append(document)
+        return documents
+    
+    def getByID(self, id):
+        document = self.getCollection().find_one({"_id": ObjectId(id)})
+        id = document.pop('_id')
+        document['id'] = str(id)
         return document
     
     def insert(self, document):
-        document = self.getCollection().insert_one(document)
-        return document
+        self.getCollection().insert_one(document)
+
+    def update(self, document, id):
+        self.getCollection().update_one({"_id": ObjectId(id)}, 
+                                       {"$set": document})
+
+    def deleteAll(self):
+        self.getCollection().delete_many({})
+
+    def deleteByID(self, id):
+        ret = self.getCollection().delete_one({"_id": ObjectId(id)})
+        return ret.deleted_count
