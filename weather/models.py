@@ -1,8 +1,10 @@
 from typing import Any
-from bson import ObjectId
+from django.db import models
 
 class WeatherEntity:
 
+    id = ''
+    
     def __init__(self, temperature, date,
                  city='', atmosphericPressure=0,
                  humidity=0, weather='', id='') -> None:

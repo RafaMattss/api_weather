@@ -4,7 +4,7 @@ from weather.exceptions import WeatherException
 from pymongo.errors import ConnectionFailure
 from bson import ObjectId
 
-class WeatherRepository:
+class UserRepository:
 
     collection = ''
 
@@ -53,14 +53,4 @@ class WeatherRepository:
     def deleteById(self, id) -> None:
        ret = self.getColletion().delete_one({"_id": ObjectId(id)})
        return ret.deleted_count
-    
-    def getByCity(self, filter) -> None:
-        documents = []
-        for document in self.getColletion().find(filter):
-            id = document.pop('_id')
-            document['id'] = str(id)
-            documents.append(document)
-        return documents
-
-
     
